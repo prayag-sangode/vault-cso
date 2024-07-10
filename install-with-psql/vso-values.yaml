@@ -1,0 +1,6 @@
+defaultVaultConnection:
+  enabled: true
+  address: "http://vault-internal.vault.svc.cluster.local:8200"
+  skipTLSVerify: false
+
+#helm install vault-secrets-operator hashicorp/vault-secrets-operator -n vault --create-namespace --values vso-values.yaml

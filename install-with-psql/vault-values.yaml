@@ -1,0 +1,25 @@
+injector:
+  enabled: false
+
+server:
+  affinity: null
+
+  standalone:
+    enabled: false
+
+  ha:
+    enabled: true
+    config: |
+      ui = true
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+      storage "postgresql" {
+        connection_url="postgres://vault:pwadmin@192.168.200.71:5432/vault?sslmode=disable"
+        table="vault_kv_store",
+        ha_enabled=true,
+        ha_table="vault_ha_locks"
+      }
+      service_registration "kubernetes" {}

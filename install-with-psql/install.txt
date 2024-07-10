@@ -1,16 +1,18 @@
-export DB_USERNAME=myuser
-export DB_PASSWORD=pwadmin
-export DB_HOST=192.168.49.2  
-export DB_NAME=mydatabase
-export DB_PORT=30550
+bash psql-install.sh
 
----
+sudo -i -u postgres psql -c "CREATE USER vault WITH PASSWORD 'pwadmin';"
+sudo -i -u postgres psql -c "ALTER USER vault WITH SUPERUSER;"
+sudo -i -u postgres psql -c "CREATE DATABASE vault OWNER vault;"
+
+cat hashicorp_vault_postgresql_schema.sql
+
+sudo -i -u postgres psql -d vault -f hashicorp_vault_postgresql_schema.sql
 
 helm repo add hashicorp https://helm.releases.hashicorp.com
 
 helm repo update
 
-helm install vault hashicorp/vault -n vault --create-namespace 
+helm upgrade --install vault hashicorp/vault -n vault --create-namespace -f vault-values.yaml
 
 kubectl -n vault get all
 
@@ -19,6 +21,8 @@ kubectl exec vault-0 -n vault -- vault operator init -key-shares=1 -key-threshol
 VAULT_UNSEAL_KEY=$(jq -r ".unseal_keys_b64[]" cluster-keys.json)
 
 kubectl exec vault-0 -n vault -- vault operator unseal $VAULT_UNSEAL_KEY
+kubectl exec vault-1 -n vault -- vault operator unseal $VAULT_UNSEAL_KEY
+kubectl exec vault-2 -n vault -- vault operator unseal $VAULT_UNSEAL_KEY
 
 kubectl -n vault get all
 
@@ -26,19 +30,12 @@ kubectl exec -it  vault-0 -n vault -- /bin/sh
 
 vault login
 
-vault auth enable kubernetes
-
-vault write auth/kubernetes/config \
-kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
-
---
-
 cat > vso-values.yaml
 defaultVaultConnection:
   enabled: true
   address: "http://vault-internal.vault.svc.cluster.local:8200"
   skipTLSVerify: false
- 
+
 helm install vault-secrets-operator hashicorp/vault-secrets-operator -n vault --create-namespace --values vso-values.yaml
 
 vault secrets enable kv-v2
@@ -110,12 +107,8 @@ kubectl -n flask-app get VaultStaticSecret
 
 kubectl -n flask-app get VaultAuth
 
-
-
-
 kubectl get secret flask-app-secret -n flask-app -o jsonpath="{.data.username}" | base64 --decode
-
 
 kubectl get secret flask-app-secret -n flask-app -o jsonpath="{.data.password}" | base64 --decode
 
-
+#NEW_VAULT_TOKEN=$(vault token create -format=json | jq -r .auth.client_token)
